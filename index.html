@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" >
+
+<head>
+    <meta charset="UTF-8">
+    <title>Involute gear generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <script>console.clear();</script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "vendor/": "./js/vendor/",
+                "gear/": "./js/"
+            }
+        }
+    </script>
+    <script src="./js/vendor/vue.js"></script>
+    <script src="https://sphinxxxx.github.io/zoomable-svg/dist/zoomable-svg.min.js"></script>
+    <script type="module" src="./js/main.js"></script>
+
+    <link href="https://sphinxxxx.github.io/vue-components/vue-inputs.css" rel="stylesheet" />
+    <link href="./main.css" rel="stylesheet" />
+</head>
+
+<body>
+<main id="app">
+    <h2>Involute gear generator</h2>
+
+    <div id="config">
+        <div id="tooth" class="slider-grid">
+            <slider v-model="tooth.circularPitch" caption="Size (c. pitch)" title="Circular pitch" :attr="{ min: 1, max: 100, step: 1 }"></slider>
+            <slider v-model="tooth.pressureAngle" caption="Pressure angle" :attr="{ min: 10, max: 40, step: .5 }"></slider>
+            <slider v-model="tooth.addendumRatio" caption="Addendum *" :attr="{ min: 0, max: .5, step: .01 }"></slider>
+            <slider v-model="tooth.profileShiftRatio" caption="Profile shift *" :attr="{ min: -.4, max: .4, step: .01 }"></slider>
+            <slider v-model="tooth.clearanceRatio" caption="Clearance *" :attr="{ min: 0, max: .4, step: .01 }"></slider>
+            <slider v-model="tooth.backlashRatio" caption="Backlash *" :attr="{ min: 0, max: .5, step: .01 }"></slider>
+            <!--label>
+                <span>Undercut</span>
+                <input type="checkbox" v-model="tooth.undercut">
+            </label-->
+        </div>
+        <div id="gearset" class="slider-grid">
+            <slider v-model="pinionTeeth" caption="Pinion" :attr="{ min: 2 }"></slider>
+            <slider v-model="ringTeeth" caption="Ring" :attr="{ min: 2 }"></slider>
+            <slider v-model="tooth.bevelRatio" caption="Bevel *" :attr="{ min: 0, max: .25, step: .01 }"></slider>
+            <slider v-model="detail" caption="Detail" :attr="{ min: 0, max: 4 }"></slider>
+            <hr/>
+            <slider v-model="pinionDegs" caption="Rotation" :attr="{ min: -180, max: 180, step: 1 }"></slider>
+            <label id="roto-pinion">
+                <span>Fixed pinion</span>
+                <input type="checkbox" v-model="view.fixedPinion">
+            </label>
+
+            <aside><i>* Ratio of circular pitch<!--, ** Ratio of addendum--></i></aside>
+        </div>
+    </div>
+
+    <label id="debug" aria-label="Debug view" title="Debug view">
+        <input type="checkbox" v-model="view.debugging" />
+        <svg stroke="black" stroke-width="2" fill="none" width="500" viewBox="0 -2 32 32" xmlns="http://www.w3.org/2000/svg">
+            <rect x="8" y="5" width="16" height="22" rx="8" />
+            <path d="M3,9 l2,2 3,1 h16 l3-1 2-2  M16,12 v15" />
+            <path id="a" d="M6,0 l6,2 2,3  M2,20 l3-2 h3  M5,28 l2-3 l3-2" />
+            <use href="#a" transform="scale(-1 1) translate(-32)" />
+        </svg>
+        <!--svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="m29.83 20 .34-2-5.17-.85v-4.15c0-.08 0-.15 0-.23l5.06-1.36-.51-1.93-4.83 1.29a9 9 0 0 0 -4.72-5.77v-3h-2v2.23a8.81 8.81 0 0 0 -4 0v-2.23h-2v3a9 9 0 0 0 -4.71 5.82l-4.83-1.34-.46 1.93 5 1.36v.23 4.15l-5.16.85.32 2 4.84-.82a8.9 8.9 0 0 0 .82 3.57l-4.53 4.54 1.42 1.42 4.19-4.2a9 9 0 0 0 14.2 0l4.19 4.2 1.42-1.42-4.54-4.54a8.9 8.9 0 0 0 .83-3.57zm-14.83 5.92a7 7 0 0 1 -6-6.92v-6h6zm-5.71-14.92a7 7 0 0 1 13.42 0zm13.71 8a7 7 0 0 1 -6 6.92v-12.92h6z"/></svg-->
+    </label>
+
+    <svg id="gears" fill="none" :width="400" :height="400" viewBox="-100,-100 200,200" viewBox="30 -10 20 20" xmlns="http://www.w3.org/2000/svg">
+        <g :transform="transContainer">
+
+            <g id="rack" :transform="transRack" stroke="lime">
+                <path :d="'M' + [0, -ringR, 'v' + 2 * ringR]" :stroke-dasharray="circleDash" />
+                <g class="gear" v-if="!view.debugging">
+                    <path :d="renderedRack" />
+                </g>
+                <g class="debug" v-if="view.debugging">
+                    <path :d="'M' + [rackTooth(-toothConfig.circularPitch), rackTooth(0), rackTooth(toothConfig.circularPitch)]" fill="lime" fill-opacity=".5" />
+                </g>
+            </g>
+
+            <g id="pinion" :transform="transPinion" stroke="tomato">
+                <g class="circles" :stroke-dasharray="circleDash">
+                    <circle :r="pinionR" />
+                    <path :d="'M0,0 ' + [pinionR, 0]" />
+                    <circle :r="pinion.innerR" stroke-width=".3" />
+                    <circle :r="pinion.outerR" stroke-width=".3" />
+                </g>
+                <g class="gear" v-if="!view.debugging">
+                    <path :d="renderedPinion" />
+                    <path :d="renderedPinionBevel" stroke-opacity=".5" />
+                </g>
+                <g class="debug" v-if="view.debugging">
+                    <g stroke-width=".5" stroke-opacity=".7">
+                        <path v-for="poly in pinionToothProxy.polysForTracing" :d="'M' + poly" />
+                        <circlemarker v-for="poly in pinionToothProxy.polysForTracing" r=".3" :coord="poly[0]" />
+
+                        <g stroke-width="1">
+                            <path :d="'M' + pinionToothProxy.tipPath" />
+                            <circlemarker r=".4" :coord="pinionToothProxy.tipPath[0]" />
+                        </g>
+                        <!--
+                        <g stroke-width="2" stroke="dodgerblue" v-for="path in [pinionToothProxy.importantTipPath, pinionToothProxy.bottomOutline, pinionToothProxy.mainInvolute]">
+                            <path :d="'M' + path" />
+                            <circlemarker r=".5" :coord="path[0]" />
+                        </g>
+                        -->
+                    </g>
+                    <g stroke="black">
+                        <path v-for="part in pinionToothProxy.parts" v-if="part.length"
+                            :d="'M' + part /*+ ' l1,1'*/" stroke-width="4" stroke-opacity=".2" />
+                        <path :d="'M' + pinionToothProxy.outline" />
+                        <circlemarker r=".5" :coord="pinionToothProxy.outline[0]" />
+                    </g>
+                    <path :d="'M' + pinionToothProxy.outline" :transform="`rotate(${pinion.toothRotation * .5 + 180})`" />
+                    <path :d="'M' + pinionToothProxy.outline" :transform="`rotate(${pinion.toothRotation})`" />
+                    <path :d="'M' + pinionToothProxy.outline" :transform="`rotate(${pinion.toothRotation * 2})`" />
+                    <!--
+                    <g stroke="hotpink">
+                        <circle :r="pinionBase.baseR" stroke-dasharray="4" />
+                        <path v-for="line in pinionBase.cuts" :d="'M' + line" stroke-width="4" stroke-opacity=".3" />
+                        <circlemarker v-for="point in pinionBase.cuts[2]" r=".1" :coord="point" />
+                        <circlemarker v-for="point in pinionBase.cuts[3]" r=".1" :coord="point" stroke="blue" />
+                    </g>
+                    -->
+                </g>
+            </g>
+
+            <g id="ring" :transform="transRing" stroke="dodgerblue">
+                <g class="circles" :stroke-dasharray="circleDash">
+                    <circle :r="ringR" />
+                    <circle :r="ring.innerR" stroke-width=".3" />
+                    <circle :r="ring.outerR" stroke-width=".3" />
+                </g>
+                <g class="gear" v-if="!view.debugging">
+                    <path :d="renderedRing" />
+                    <path :d="renderedRingBevel" stroke-opacity=".5" />
+                </g>
+                <g class="debug" v-if="view.debugging">
+                    <g fill-opacity=".1" stroke-opacity="1.6">
+                        <g v-for="poly in ringCuttersProxy.cutters">
+                            <polyline :points="poly" />
+                            <_circlemarker r="1" :coord="poly[0]" />
+                        </g>
+                        <g v-for="poly in ringCuttersProxy.pointPaths" stroke="orange" stroke-width="2" stroke-opacity=".5">
+                            <polyline :points="poly" />
+                            <_circlemarker r="1" :coord="poly[0]" />
+                        </g>
+                        <!--
+                        -->
+                        <g stroke="lime" stroke-width="2">
+                            <polyline :points="ringCuttersProxy.tipPath" />
+                            <circlemarker :r="2" :coord="ringCuttersProxy.tipPath[0]" />
+
+                            <polyline :points="ringCuttersProxy.undercutPath" />
+                            <circlemarker :r="1" :coord="ringCuttersProxy.undercutPath[0]" />
+                        </g>
+                        <!--g v-for="poly in ringCuttersProxy">
+                            <circlemarker v-for="coord in poly" :r=".1" :coord="coord" />
+                        </g-->
+                        <g v-for="poly in ring.debug.segments" stroke="red" stroke-width="3" stroke-opacity=".4">
+                            <polyline :points="poly" />
+                            <circlemarker r=".1" :coord="poly[0]" />
+                        </g>
+                    </g>
+                    <g id="ringTooth" stroke="black">
+                        <_polyline :points="ringToothComp" _stroke-dasharray="4 8" />
+                        <g v-for="poly in [ringToothComp]">
+                            <circlemarker v-for="coord in poly" :r=".05" :coord="coord" />
+                        </g>
+                        <polyline :points="ringToothComp" :transform="`rotate(${ring.toothRotation})`" />
+                        <polyline :points="ringToothComp" :transform="`rotate(${ring.toothRotation * 2})`" />
+                    </g>
+                </g>
+            </g>
+
+        </g>
+    </svg>
+
+</main>
+</body>
+
+</html>

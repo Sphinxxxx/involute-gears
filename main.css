@@ -1,0 +1,80 @@
+html, body {
+    height: 100%;
+}
+
+body {
+    display: flex;
+    flex-flow: column;
+    margin: 0;
+    font-family: Georgia, sans-serif;
+}
+body button, body input, body select {
+    font: inherit;
+    box-sizing: border-box;
+    padding: 0.25em 0.5em;
+    outline-color: dodgerblue;
+}
+body input[type=range] {
+    padding: 0;
+}
+body input:not([type=button]), body select {
+    border: 1px solid silver;
+}
+body ul, body ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+body main {
+    flex: 1 1 auto;
+    display: flex;
+    flex-flow: column;
+}
+
+#app {
+    background-image: radial-gradient(circle closest-corner at 50% 50%, silver 0%, white 100%);
+}
+#app h2 {
+    margin: 0.3em 0;
+    text-align: center;
+}
+#config {
+    display: flex;
+    align-items: start;
+    padding-bottom: 1ch;
+}
+#config #gearset {
+    flex: 1 1 auto;
+}
+#config hr, #config aside {
+    grid-column: span 3;
+}
+#config hr {
+    margin: 0.6ch auto;
+}
+#config #roto-pinion {
+    grid-column: 3;
+}
+#app .slider-grid {
+    margin: 0 1ch;
+}
+#app #gears {
+    flex: 1 1 auto;
+    width: 100%;
+    background: white;
+    touch-action: none;
+}
+#app #gears circle, #app #gears path, #app #gears polyline, #app #gears polygon {
+    vector-effect: non-scaling-stroke;
+}
+
+#debug {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    background: gold;
+}
+#debug svg {
+    width: 2em;
+}
