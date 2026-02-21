@@ -4,6 +4,13 @@ import * as utils from 'gear/tooth-utils.js';
 import RackGear from 'gear/RackGear.js';
 import PolysOutline from 'gear/PolysOutline.js';
 
+/*
+ * Inspired by [Involute Spur Gear Builder v2.0](https://hessmer.org/gears/InvoluteSpurGearBuilder.html) by Dr. Rainer Hessmer,
+ * this is a faster implementation of the same methods in [Creating spur gears](https://lcamtuf.coredump.cx/gcnc/ch6/#6.2) by Michal Zalewski.
+ *
+ * See also [A 15-minute intro to involute gears]https://lcamtuf.substack.com/p/a-15-minute-intro-to-involute-gears
+ */
+
 
 class PinionGear {
     constructor(config) {
@@ -39,6 +46,55 @@ class PinionGear {
     worldToPinion(coord, pinionDegs) {
         const pinionCoord = geom.rotate(0, 0, ...coord, pinionDegs);
         return pinionCoord;
+    }
+
+    //Used for debugging to ensure our tooth cutter method gives a tooth with the correct involute curve.
+    involuteForScale() {
+        console.log('ifs');
+
+        //Radius of base circle:
+        //https://www.sdp-si.com/resources/elements-of-metric-gear-technology/page2.php#Section3
+        const rb = this.r * Math.cos(Math.PI * this.config.tooth.pressureAngle / 180);
+
+        //Offset of circle start point (in radians):
+        //https://en.wikipedia.org/wiki/Involute#Involutes_of_a_circle
+        const a = -Math.PI;
+
+        const involutePoints = [];
+        let approxCrossesPitch = [];
+        for (let deg = 0; deg > -90; deg--) {
+            const t = deg * Math.PI/180,
+                cosTA = Math.cos(t + a),
+                sinTA = Math.sin(t + a);
+
+            //Trace involute:
+            //https://en.wikipedia.org/wiki/Involute#Involutes_of_a_circle
+            const x = rb * (cosTA + t * sinTA),
+                  y = rb * (sinTA - t * cosTA),
+                  ri = Math.hypot(x, y),
+                  invoPoint = [x, y];
+
+            if (ri >= this.outerR) {
+                const lastSegment = [involutePoints.at(-1), invoPoint];
+                involutePoints.push(geom.intersectCircle(lastSegment, this.outerR));
+                break;
+            }
+            involutePoints.push(invoPoint);
+        }
+
+        const invoTip = involutePoints.at(-1),
+              toothTip = this.pinionTooth().parts.halfOutline.at(-1);
+
+        const dx = toothTip[0],
+              dy = toothTip[1] - invoTip[1],
+              rotationToTooth = Math.atan(dy / dx) * 180/Math.PI;
+        //console.log('ii', invoTip, toothTip, rotationToTooth);
+
+        return {
+            baseCircleRadius: rb,
+            involutePoints,
+            rotationToTooth,
+        };
     }
 
     pinionTooth(isRingCutter = false) {

@@ -86,8 +86,8 @@ new Vue({
             });
         },
         */
-        pinionBase() {
-            return this.pinion.pinionBaseCircleR();
+        pinionInvolute() {
+            return this.pinion.involuteForScale();
         },
         ring() {
             return new InternalGear({

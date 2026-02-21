@@ -110,21 +110,23 @@
                     </g>
                     <g stroke="black">
                         <path v-for="part in pinionToothProxy.parts" v-if="part.length"
-                            :d="'M' + part /*+ ' l1,1'*/" stroke-width="4" stroke-opacity=".2" />
+                            :d="'M' + part /*+ ' l1,1'*/" stroke-width="6" stroke-opacity=".3" />
                         <path :d="'M' + pinionToothProxy.outline" />
                         <circlemarker r=".5" :coord="pinionToothProxy.outline[0]" />
                     </g>
                     <path :d="'M' + pinionToothProxy.outline" :transform="`rotate(${pinion.toothRotation * .5 + 180})`" />
                     <path :d="'M' + pinionToothProxy.outline" :transform="`rotate(${pinion.toothRotation})`" />
                     <path :d="'M' + pinionToothProxy.outline" :transform="`rotate(${pinion.toothRotation * 2})`" />
-                    <!--
-                    <g stroke="hotpink">
-                        <circle :r="pinionBase.baseR" stroke-dasharray="4" />
-                        <path v-for="line in pinionBase.cuts" :d="'M' + line" stroke-width="4" stroke-opacity=".3" />
-                        <circlemarker v-for="point in pinionBase.cuts[2]" r=".1" :coord="point" />
-                        <circlemarker v-for="point in pinionBase.cuts[3]" r=".1" :coord="point" stroke="blue" />
+                    <!---->
+                    <g stroke="hotpink" opacity=".5" :transform="`rotate(${pinionInvolute.rotationToTooth})`" _transform="`rotate(${pinion.toothRotation * .25 - pinionInvolute.approxAngleAtPitch})`">
+                        <g stroke-dasharray="6" stroke-width="6">
+                            <circle :r="pinionInvolute.baseCircleRadius" />
+                            <path :d="'M' + pinionInvolute.involutePoints" />
+                        </g>
+                        <!--circlemarker v-for="point in pinionInvolute.involutePoints" r=".1" :coord="point" /-->
+                        <circlemarker r=".3" :coord="pinionInvolute.approxCrossesPitch" />
                     </g>
-                    -->
+
                 </g>
             </g>
 
