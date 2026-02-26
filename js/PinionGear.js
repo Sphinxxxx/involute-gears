@@ -83,7 +83,7 @@ class PinionGear {
         }
 
         const invoTip = involutePoints.at(-1),
-              toothTip = this.pinionTooth().parts.halfOutline.at(-1);
+              toothTip = this.pinionTooth().halfOutline.at(-1);
 
         const dx = toothTip[0],
               dy = toothTip[1] - invoTip[1],
@@ -197,10 +197,8 @@ class PinionGear {
             cuts: allCuts,
             tipPath: rackTipPath,
             polysForTracing,
-            parts: {
-                halfOutline,
-            },
-            outline: outline,
+            halfOutline,
+            outline,
         };
     }
 
@@ -282,7 +280,7 @@ class PinionGear {
 
     bevelOutline() {
         const beveled = new PinionGear(utils.bevelConfig(this.config));
-        return beveled.completeOutline();
+        return beveled.pinionTooth().outline;
     }
 }
 

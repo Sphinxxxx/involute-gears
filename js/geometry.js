@@ -158,3 +158,90 @@ export function clockwise(a, b, c) {
 
     return (cross > 0);
 }
+
+export function offsetPoly(poly, dist) {
+    function offsetSeg(p1, p2) {
+        const [x1, y1] = p1,
+        [x2, y2] = p2,
+        dx = x2 - x1,
+        dy = y2 - y1,
+        len = Math.hypot(dx, dy);
+
+        //https://math.stackexchange.com/questions/1966404/find-a-2d-unit-vector-perpendicular-to-a-given-vector
+        //`multiplier` is already signed and will flip dx and dy as needed
+        const multiplier = dist / len,
+        xPerp = -dy * multiplier,  //((dist > 0) ? -dy : dy) * multiplier,
+        yPerp =  dx * multiplier;  //((dist > 0) ? dx : -dx) * multiplier;
+
+        //Return the offset segment on the form [start point, dx and dy],
+        //which are the values we'll need in `intersect()` later:
+        return [x1 + xPerp, y1 + yPerp, dx, dy];
+    }
+
+    function intersect(seg1, seg2) {
+        const [x1, y1, dx1, dy1] = seg1,
+        [x2, y2, dx2, dy2] = seg2;
+        /*
+         *            https://math.stackexchange.com/questions/89769/intersection-point-of-line-segments
+         *            x1 + t*dx1 = x2 + u*dx2     and     y1 + t*dy1 = y2 + u*dy2
+         *                                                         u = (y1 - y2 + t*dy1) / dy2
+         *            t = (x2 - x1 + u*dx2) / dx1
+         *            t = (x2 - x1 + ((y1 - y2 + t*dy1) / dy2)*dx2) / dx1
+         *            ...
+         *            t = (dy2 * (x2 - x1) + dx2 * (y1 - y2)) / (dx1 * dy2 - dx2 * dy1)
+         */
+        const t = (dy2 * (x2 - x1) + dx2 * (y1 - y2)) / (dx1 * dy2 - dx2 * dy1),
+        p = [x1 + t * dx1, y1 + t * dy1];
+        return p;
+    }
+
+    const offSegs = [];
+    for (let i = 1; i < poly.length; i++) {
+        const p1 = poly[i - 1],
+        p2 = poly[i];
+        offSegs.push(offsetSeg(p1, p2));
+    }
+
+    const points = [offSegs[0].slice(0, 2)];
+    for (let i = 1; i < offSegs.length; i++) {
+        const s1 = offSegs[i - 1],
+        s2 = offSegs[i];
+        points.push(intersect(s1, s2))
+    }
+    const [xLast, yLast, dxLast, dyLast] = offSegs.at(-1);
+    points.push([xLast + dxLast, yLast + dyLast]);
+    return points;
+}
+
+export function unloopPoly(poly) {
+    const t1 = Date.now();
+    const unlooped = [poly[0]];
+
+    const segs = [];
+    for (let i = 1; i < poly.length; i++) {
+        segs.push([poly[i - 1], poly[i]]);
+    }
+
+    const segMax = segs.length - 1;
+    for (let i = 0; i <= segMax; i++) {
+        const currSeg = segs[i];
+        //Find the *last* segment to cross currSeg:
+        let crossing;
+        for (let j = segMax; j >= i + 2; j--) {
+            crossing = intersectSegs(currSeg, segs[j]);
+            if (crossing) {
+                crossing.pointsSkipped = j - i;
+                unlooped.push(crossing);
+                i = j - 1;
+                break;
+            }
+        }
+        if (!crossing) {
+            unlooped.push(currSeg[1]);
+        }
+    }
+
+    const t2 = Date.now();
+    console.log('unloop ~' + poly.length, t2 - t1);
+    return unlooped;
+}

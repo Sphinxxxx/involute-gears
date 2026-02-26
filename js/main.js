@@ -22,7 +22,7 @@ new Vue({
             clearanceRatio: 0,
             backlashRatio: 0,
             //undercut: true,
-            bevelRatio: 0,
+            bevelRatio: 0.05,
         },
         pinionTeeth: 16,
         pinionDegs: 0,
@@ -89,6 +89,9 @@ new Vue({
         pinionInvolute() {
             return this.pinion.involuteForScale();
         },
+        pinionHalfOffset() {
+            return this.triangulateBevel(this.pinionToothProxy.outline, this.pinion.bevelOutline());
+        },
         ring() {
             return new InternalGear({
                 tooth: this.invertProfileShift(),
@@ -96,6 +99,9 @@ new Vue({
                 teethPinion: this.pinionTeeth,
                 sampleDegs: this.sampleDegrees,
             });
+        },
+        ringHalfOffset() {
+            return this.triangulateBevel(this.ring.ringTooth().outline, this.ring.bevelOutline());
         },
         /*
         ringBevel() {
@@ -138,7 +144,7 @@ new Vue({
         },
         ringToothComp() {
             const a = Date.now();
-            const tooth = this.ring.ringTooth();
+            const tooth = this.ring.ringTooth().outline;
             const b = Date.now();
             console.log('rtc', b - a);
             return tooth;
@@ -217,6 +223,49 @@ new Vue({
             }
             const coords = poly.map(coord => coord.map(normNum));
             return `M${coords}Z`;
-        }
+        },
+        triangulateBevel(tooth, bevel) {
+            const t1 = Date.now();
+            function dist(p1, p2) {
+                const dx = p1[0] - p2[0],
+                      dy = p1[1] - p2[1];
+                return Math.hypot(dx, dy);
+            }
+
+            const mesh = [];
+            let iTooth = 0,
+                iBevel = 0;
+            function pushTriangle(nextPoint) {
+                const tri = [tooth[iTooth], nextPoint, bevel[iBevel]];
+                mesh.push(tri);
+            }
+
+            const maxTooth = tooth.length - 1,
+                  maxBevel = bevel.length - 1;
+            while ((iTooth < maxTooth) && (iBevel < maxBevel)) {
+
+                const nextTooth = tooth[iTooth + 1],
+                      nextBevel = bevel[iBevel + 1],
+                      toNextTooth = dist(bevel[iBevel], nextTooth),
+                      toNextBevel = dist(tooth[iTooth], nextBevel);
+
+                if (toNextBevel < toNextTooth) {
+                    pushTriangle(nextBevel);
+                    iBevel++;
+                }
+                else {
+                    pushTriangle(nextTooth);
+                    iTooth++;
+                }
+            }
+            //One of the polylines will have remaining vertices to connect. Just check both:
+            while (iTooth < maxTooth) { pushTriangle(tooth[iTooth + 1]); iTooth++; }
+            while (iBevel < maxBevel) { pushTriangle(bevel[iBevel + 1]); iBevel++; }
+
+            const t2 = Date.now();
+            console.log('mesh ~' + mesh.length, t2 - t1);
+            return [tooth, bevel, ...mesh];
+        },
+
     }
 });

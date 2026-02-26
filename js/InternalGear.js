@@ -53,10 +53,10 @@ class InternalGear {
 
     ringTooth() {
         //Gear coupling or spline shaft (or invalid gear..)
-        if(this.config.teeth <= this._pin.config.teeth) { return this.ringCutter(); }
+        if(this.config.teeth <= this._pin.config.teeth) { return { outline: this.ringCutter() }; }
 
         const { cutters, pointPaths, tipPath, undercutPath } = this.ringCutters(true);
-        const innerR = this.innerR; //(this.gearR - this.tooth.dedendum);
+        const innerR = this.innerR;
 
 
         //Cutting an internal tooth results in a lot more polyline segments than when cutting a pinion tooth.
@@ -85,17 +85,21 @@ class InternalGear {
         //Filtering is done. Trace the outline:
         tracer.buildIndexes();
         const traced = tracer.trace(segsFilter.startCoord);
-        let outline = utils.smoothOutline(traced, this.config);
+        let halfOutline = utils.smoothOutline(traced, this.config);
 
         //Trim the outline either at addendum or halfway to the next tooth:
+
         //Cut the outline *just before* it reaches the region of the next tooth,
         //to avoid duplicate points when rotating the outline to draw the whole gear.
         const maxAngle = this.toothRotation * .499;
-        outline = utils.trimOutline(outline, innerR, maxAngle, true);
+        halfOutline = utils.trimOutline(halfOutline, innerR, maxAngle, true);
 
         //Putting it all together..
-        const otherHalf = outline.map(geom.flipY).reverse();
-        return otherHalf.concat(outline);
+        const otherHalf = halfOutline.map(geom.flipY).reverse();
+        return {
+            halfOutline,
+            outline: otherHalf.concat(halfOutline),
+        }
     }
 
     ringCutter() {
@@ -109,7 +113,7 @@ class InternalGear {
                 nextToothCutoff = geom.createVector(-this.toothRotation / 2, this.r * 2);
 
         //We'll make the ring tooth profile by sampling the pinion tooth at different angles,
-        //puttimg all those polygons on top of each other, and then tracing the outline around them.
+        //putting all those polygons on top of each other, and then tracing the outline around them.
         const placeCut = (pinion, angle) => {
             const worldShape = pinion.map(c => this.pinionToWorld(c, angle)),
                   gearCutter = worldShape.map(c => this.worldToInternal(c, this.pinionToInternalDegs(angle)));
@@ -211,14 +215,14 @@ class InternalGear {
     }
 
     completeOutline() {
-        const tooth = this.ringTooth(),
+        const tooth = this.ringTooth().outline,
               gear = utils.completeOutline(tooth, this.config.teeth);
         return gear;
     }
 
     bevelOutline() {
         const beveled = new InternalGear(utils.bevelConfig(this.config));
-        return beveled.completeOutline();
+        return beveled.ringTooth().outline;
     }
 }
 

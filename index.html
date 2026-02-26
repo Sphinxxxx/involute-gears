@@ -109,8 +109,10 @@
                         -->
                     </g>
                     <g stroke="black">
-                        <path v-for="part in pinionToothProxy.parts" v-if="part.length"
-                            :d="'M' + part /*+ ' l1,1'*/" stroke-width="6" stroke-opacity=".3" />
+                        <path :d="'M' + pinionToothProxy.halfOutline" stroke-width="6" stroke-opacity=".3" />
+                        <path v-for="(poly, i) in pinionHalfOffset" :d="'M' + poly" stroke-width="4" stroke="hotpink" opacity=".4"
+                              :transform="`rotate(${pinion.toothRotation})`" />
+
                         <path :d="'M' + pinionToothProxy.outline" />
                         <circlemarker r=".5" :coord="pinionToothProxy.outline[0]" />
                     </g>
@@ -169,9 +171,13 @@
                     </g>
                     <g id="ringTooth" stroke="black">
                         <_polyline :points="ringToothComp" _stroke-dasharray="4 8" />
+                        <path v-for="(poly, i) in ringHalfOffset" :d="'M' + poly" stroke-width="4" opacity=".4"
+                              :stroke="(i < 2) ? 'hotpink' : 'orange'" :fill="(i >= 2) ? 'gold' : 'none'"
+                              :transform="`rotate(${ring.toothRotation})`" />
                         <g v-for="poly in [ringToothComp]">
                             <circlemarker v-for="coord in poly" :r=".05" :coord="coord" />
                         </g>
+
                         <polyline :points="ringToothComp" :transform="`rotate(${ring.toothRotation})`" />
                         <polyline :points="ringToothComp" :transform="`rotate(${ring.toothRotation * 2})`" />
                     </g>
